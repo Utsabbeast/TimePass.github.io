@@ -776,9 +776,9 @@ footer span.red{color:#3a0000;font-size:11px}
 
 <!-- ══ FOOTER ══ -->
 <footer>
-  <span> TIMEPASS DRAWING</span>
+  <span>© 2026 TIMEPASS DRAWING</span>
   <span class="red">⸻ 墨 ⸻</span>
-  <span>DRAW ANYTHING · BE FREE · CONQUER THE TIME</span>
+  <span>DRAW ANYTHING · BE FREE · CONQUER THE CANVAS</span>
 </footer>
 
 <!-- ink drops -->
@@ -870,10 +870,10 @@ function applyCtx(){
   ctx.lineCap  = tool==='marker' ? 'square' : 'round';
   ctx.lineJoin = 'round';
   if(tool==='eraser'){
-    ctx.globalCompositeOperation='destination-out';
+    ctx.globalCompositeOperation='source-over';
     ctx.lineWidth=size*5;
     ctx.globalAlpha=1;
-    ctx.strokeStyle='rgba(0,0,0,1)';
+    ctx.strokeStyle='rgb(246,243,238)';
     ctx.fillStyle=ctx.strokeStyle;
   } else if(tool==='marker'){
     ctx.globalCompositeOperation='source-over';
@@ -909,7 +909,7 @@ function draw(x,y){
   ctx.quadraticCurveTo(lastX,lastY,mx,my);ctx.stroke();
   lastX=x;lastY=y;
 }
-function stopDraw(){drawing=false;ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over'}
+function stopDraw(){drawing=false;ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';ctx.strokeStyle=color;ctx.fillStyle=color}
 
 canvas.addEventListener('mousedown', e=>{const p=getPos(e);startDraw(p.x,p.y)});
 canvas.addEventListener('mousemove', e=>{const p=getPos(e);draw(p.x,p.y)});
