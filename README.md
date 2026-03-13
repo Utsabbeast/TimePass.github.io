@@ -8,7 +8,7 @@
 
 Hosted on GitHub Pages:
 ```
-https://YOUR-USERNAME.github.io/timepass-drawing/
+https://utsabbeast.github.io/TimePass.github.io/
 ```
 
 ---
@@ -87,7 +87,7 @@ No external assets. No npm. No bundler. Everything is inline.
 1. Create a new **public** repository on GitHub
 2. Upload `timepass-ronin.html` renamed as **`index.html`**
 3. Go to **Settings → Pages → Branch: main → Save**
-4. Your site is live at `https://YOUR-USERNAME.github.io/REPO-NAME/` within ~60 seconds
+4. Your site is live at `https://utsabbeast.github.io/TimePass.github.io/` within ~60 seconds
 
 To update: edit `index.html` directly in GitHub's web editor and commit. The site redeploys automatically.
 
@@ -105,4 +105,4 @@ Free to use, modify, and share.
 
 ---
 
-*Draw anything · Be free · Conquer the canvas*
+*Draw anything · Be free · Conquer the time*
