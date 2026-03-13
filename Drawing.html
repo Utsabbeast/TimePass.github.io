@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>TimePass Drawing</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Noto+Serif+JP:wght@300;400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+
+body{
+  font-family:'Cinzel','Georgia',serif;
+  background:#0c0c0c;
+  display:flex;flex-direction:column;min-height:100vh;overflow:hidden;
+  cursor:default;
+}
+
+/* subtle paper noise overlay */
+body::after{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  opacity:.6;
+}
+
+/* ── HEADER ── */
+header{
+  position:relative;text-align:center;
+  padding:22px 40px 18px;
+  background:#000;
+  border-bottom:1px solid #1e1e1e;
+  z-index:10;
+  display:flex;align-items:center;justify-content:center;gap:20px;
+}
+
+.header-inner{display:flex;flex-direction:column;align-items:center;gap:6px}
+
+.deco-rule{
+  flex:1;max-width:140px;height:1px;
+  background:linear-gradient(90deg,transparent,#2a2a2a,transparent);
+  display:flex;align-items:center;justify-content:center;
+}
+.deco-rule.right{background:linear-gradient(90deg,transparent,#2a2a2a,transparent)}
+
+/* red hanko seal */
+.hanko{
+  position:absolute;right:28px;top:18px;
+  width:48px;height:48px;
+  border:2.5px solid #7a0000;border-radius:3px;
+  display:flex;align-items:center;justify-content:center;
+  transform:rotate(-6deg);
+  font-family:'Noto Serif JP',serif;font-size:22px;color:#7a0000;
+  opacity:.85;flex-direction:column;gap:0;line-height:1;
+  user-select:none;
+}
+
+.title{
+  font-family:'Cinzel',serif;font-size:36px;font-weight:900;
+  letter-spacing:10px;color:#fff;text-transform:uppercase;
+  text-shadow:0 0 40px rgba(255,255,255,.04);
+}
+
+.title-rule{
+  display:flex;align-items:center;gap:14px;width:100%;
+}
+.title-rule-line{flex:1;height:1px;background:#1e1e1e}
+.jp-sub{
+  font-family:'Noto Serif JP',serif;font-size:11px;
+  letter-spacing:8px;color:#2e2e2e;white-space:nowrap;
+}
+
+/* ── TOOLBAR ── */
+#toolbar{
+  display:flex;flex-wrap:wrap;justify-content:center;align-items:stretch;
+  background:#060606;
+  border-bottom:1px solid #1e1e1e;
+  position:relative;z-index:10;
+}
+
+.tb-group{
+  display:flex;align-items:center;
+  padding:10px 18px;gap:0;
+  border-right:1px solid #1a1a1a;
+}
+.tb-group:last-child{border-right:none}
+
+.tb-group-label{
+  font-family:'Cinzel',serif;font-size:9px;letter-spacing:3px;
+  color:#252525;text-transform:uppercase;margin-right:12px;white-space:nowrap;
+}
+
+button{
+  background:transparent;border:1px solid #252525;color:#555;
+  padding:6px 13px;font-family:'Cinzel',serif;font-size:10px;
+  letter-spacing:2px;text-transform:uppercase;cursor:pointer;
+  transition:all .12s;white-space:nowrap;position:relative;
+}
+button+button{border-left:none}
+button:hover{background:#fff;color:#000;border-color:#fff;z-index:1}
+button:active{background:#ccc}
+button.active-tool{background:#fff;color:#000;border-color:#fff}
+
+/* range sliders */
+.tb-range{display:flex;align-items:center;gap:10px}
+.tb-range-label{font-family:'Cinzel',serif;font-size:9px;letter-spacing:2px;color:#2a2a2a;text-transform:uppercase;white-space:nowrap}
+input[type=range]{
+  -webkit-appearance:none;width:72px;height:1px;
+  background:#282828;outline:none;cursor:pointer;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:11px;height:11px;
+  border-radius:50%;background:#888;cursor:pointer;
+  box-shadow:0 0 0 2px #000,0 0 0 3px #444;
+}
+input[type=range]:hover::-webkit-slider-thumb{background:#fff}
+.tb-val{font-family:'Cinzel',serif;font-size:10px;color:#333;min-width:28px}
+
+input[type=color]{
+  -webkit-appearance:none;width:26px;height:26px;
+  border:1px solid #333;cursor:pointer;background:none;padding:2px;
+  transition:transform .15s,border-color .15s;
+}
+input[type=color]::-webkit-color-swatch-wrapper{padding:0}
+input[type=color]::-webkit-color-swatch{border:none}
+input[type=color]:hover{transform:scale(1.12);border-color:#888}
+
+#tool-status{
+  font-family:'Cinzel',serif;font-size:9px;letter-spacing:4px;
+  color:#222;text-transform:uppercase;padding:0 18px;
+  display:flex;align-items:center;
+}
+
+/* ── CANVAS SECTION ── */
+#canvas-section{
+  flex:1;display:flex;align-items:stretch;
+  position:relative;z-index:5;overflow:hidden;
+}
+
+/* ── CHARACTER PANELS ── */
+.char-panel{
+  width:155px;flex-shrink:0;
+  display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
+  position:relative;overflow:hidden;
+  background:#070707;
+  padding-bottom:10px;
+}
+@media(max-width:980px){.char-panel{display:none}}
+
+/* very faint vertical rain lines */
+.char-panel::before{
+  content:'';position:absolute;inset:0;
+  background:repeating-linear-gradient(
+    180deg,
+    transparent 0px,transparent 60px,
+    rgba(255,255,255,.012) 60px,rgba(255,255,255,.012) 61px
+  );pointer-events:none;
+}
+
+/* kanji watermark */
+.panel-kanji{
+  font-family:'Noto Serif JP',serif;font-weight:300;
+  font-size:80px;color:#0f0f0f;
+  writing-mode:vertical-rl;
+  position:absolute;top:20px;right:6px;
+  user-select:none;line-height:1;letter-spacing:8px;
+  pointer-events:none;
+}
+
+/* caption under character */
+.panel-caption{
+  font-family:'Noto Serif JP',serif;font-size:10px;
+  letter-spacing:5px;color:#1a1a1a;margin-top:6px;
+  text-transform:uppercase;text-align:center;
+}
+.panel-caption-jp{
+  font-family:'Noto Serif JP',serif;font-size:9px;
+  letter-spacing:3px;color:#151515;text-align:center;margin-top:2px;
+}
+
+/* character sway animations */
+.char-panel.left svg{ animation:sway-l 5s ease-in-out infinite; transform-origin:bottom center; }
+.char-panel.right svg{ animation:sway-r 4.5s ease-in-out infinite; transform-origin:bottom center; }
+@keyframes sway-l{0%,100%{transform:rotate(-.4deg) translateY(0)}50%{transform:rotate(.4deg) translateY(-3px)}}
+@keyframes sway-r{0%,100%{transform:rotate(.5deg) translateY(0)}50%{transform:rotate(-.5deg) translateY(-4px)}}
+
+/* ── CANVAS CENTER ── */
+#canvas-center{
+  flex:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  padding:16px 12px;background:#0a0a0a;
+}
+
+/* scroll rods */
+.scroll-rod{
+  width:100%;height:12px;
+  background:linear-gradient(180deg,#3a2a1a 0%,#1e1208 40%,#3a2a1a 100%);
+  border:1px solid #0a0600;
+  position:relative;border-radius:2px;
+  box-shadow:0 2px 6px rgba(0,0,0,.8);
+}
+.scroll-rod::before,.scroll-rod::after{
+  content:'';position:absolute;top:1px;
+  width:9px;height:9px;border-radius:50%;
+  background:radial-gradient(circle at 40% 40%,#6a5030,#2a1a08);
+  border:1px solid #0a0600;
+}
+.scroll-rod::before{left:6px}
+.scroll-rod::after{right:6px}
+
+.canvas-mount{
+  border-left:10px solid #2a1a0a;
+  border-right:10px solid #2a1a0a;
+}
+
+#canvas{
+  display:block;
+  cursor:crosshair;
+}
+
+/* ── INK DROPS ── */
+.ink-drop{
+  position:fixed;pointer-events:none;z-index:2;
+  width:3px;height:4px;
+  background:#fff;border-radius:50% 50% 50% 50%/60% 60% 40% 40%;
+  opacity:0;
+  animation:drop-fall linear infinite;
+}
+@keyframes drop-fall{
+  0%  {opacity:0;transform:translateY(-10px) scaleY(1)}
+  5%  {opacity:.25}
+  95% {opacity:.1}
+  100%{opacity:0;transform:translateY(110vh) scaleY(1.4)}
+}
+
+/* ── FOOTER ── */
+footer{
+  text-align:center;padding:9px 20px;
+  background:#000;border-top:1px solid #111;
+  font-family:'Noto Serif JP',serif;color:#1c1c1c;
+  font-size:10px;letter-spacing:5px;
+  z-index:10;position:relative;
+  display:flex;align-items:center;justify-content:center;gap:20px;
+}
+footer span.red{color:#3a0000;font-size:11px}
+</style>
+</head>
+<body>
+
+<!-- ══ HEADER ══ -->
+<header>
+  <div class="deco-rule"></div>
+  <div class="header-inner">
+    <div class="title">TimePass Drawing</div>
+    <div class="title-rule">
+      <div class="title-rule-line"></div>
+      <div class="jp-sub">墨と筆 — INK &amp; BRUSH</div>
+      <div class="title-rule-line"></div>
+    </div>
+  </div>
+  <div class="deco-rule right"></div>
+  <div class="hanko">画</div>
+</header>
+
+<!-- ══ TOOLBAR ══ -->
+<div id="toolbar">
+  <div class="tb-group">
+    <span class="tb-group-label">Tools</span>
+    <button id="btn-pen"    onclick="setTool('pen')">Pen</button>
+    <button id="btn-marker" onclick="setTool('marker')">Marker</button>
+    <button id="btn-eraser" onclick="setTool('eraser')">Erase</button>
+  </div>
+  <div class="tb-group">
+    <span class="tb-group-label">History</span>
+    <button onclick="undo()">Undo</button>
+    <button onclick="redo()">Redo</button>
+  </div>
+  <div class="tb-group">
+    <div class="tb-range">
+      <span class="tb-range-label">Size</span>
+      <input type="range" id="size-sl" min="1" max="50" value="5" oninput="setSize(this.value)">
+      <span class="tb-val" id="size-val">5</span>
+    </div>
+  </div>
+  <div class="tb-group">
+    <div class="tb-range">
+      <span class="tb-range-label">Opacity</span>
+      <input type="range" id="op-sl" min="5" max="100" value="100" oninput="setOpacity(this.value)">
+      <span class="tb-val" id="op-val">100%</span>
+    </div>
+  </div>
+  <div class="tb-group">
+    <span class="tb-group-label">Colour</span>
+    <input type="color" id="col-pick" value="#1a1a1a" onchange="setColor(this.value)">
+  </div>
+  <div class="tb-group">
+    <button onclick="clearCanvas()">Clear</button>
+  </div>
+  <div id="tool-status">Pen</div>
+</div>
+
+<!-- ══ CANVAS SECTION ══ -->
+<div id="canvas-section">
+
+  <!-- LEFT: Standing Ronin (The Wanderer) -->
+  <div class="char-panel left">
+    <div class="panel-kanji">侍</div>
+
+    <!-- VAGABOND-STYLE STANDING RONIN SVG -->
+    <svg viewBox="0 0 155 308" width="155" height="285" xmlns="http://www.w3.org/2000/svg" style="display:block">
+      <defs>
+        <!-- cross-hatch shadow pattern -->
+        <pattern id="lhatch" patternUnits="userSpaceOnUse" width="5" height="5" patternTransform="rotate(45)">
+          <line x1="0" y1="0" x2="0" y2="5" stroke="#000" stroke-width=".65"/>
+        </pattern>
+        <!-- screen tone dots -->
+        <pattern id="ldots" patternUnits="userSpaceOnUse" width="4" height="4">
+          <circle cx="2" cy="2" r=".85" fill="#000"/>
+        </pattern>
+        <!-- fine hatch -->
+        <pattern id="lfine" patternUnits="userSpaceOnUse" width="3" height="3" patternTransform="rotate(135)">
+          <line x1="0" y1="0" x2="0" y2="3" stroke="#000" stroke-width=".5"/>
+        </pattern>
+      </defs>
+
+      <!-- atmospheric panel lines (very faint) -->
+      <line x1="0"   y1="0" x2="0"   y2="308" stroke="#111" stroke-width="1"/>
+      <line x1="40"  y1="0" x2="40"  y2="308" stroke="#0e0e0e" stroke-width=".5"/>
+      <line x1="80"  y1="0" x2="80"  y2="308" stroke="#0e0e0e" stroke-width=".5"/>
+      <line x1="120" y1="0" x2="120" y2="308" stroke="#0e0e0e" stroke-width=".5"/>
+      <line x1="154" y1="0" x2="154" y2="308" stroke="#111" stroke-width="1"/>
+
+      <!-- ground shadow -->
+      <ellipse cx="77" cy="302" rx="44" ry="5" fill="#111" opacity=".6"/>
+
+      <!-- ── SANDALS / FEET ── -->
+      <!-- left geta -->
+      <rect x="27" y="285" width="36" height="9"  rx="2" fill="#1a1a1a" stroke="#000" stroke-width="1.5"/>
+      <rect x="32" y="294" width="5"  height="6"  fill="#2a2a2a"/>
+      <rect x="52" y="294" width="5"  height="6"  fill="#2a2a2a"/>
+      <!-- right geta -->
+      <rect x="89" y="282" width="36" height="9"  rx="2" fill="#1a1a1a" stroke="#000" stroke-width="1.5"/>
+      <rect x="94" y="291" width="5"  height="6"  fill="#2a2a2a"/>
+      <rect x="114" y="291" width="5" height="6"  fill="#2a2a2a"/>
+      <!-- tabi socks -->
+      <path d="M29,282 Q45,278 63,282 L61,288 Q45,286 31,288 Z" fill="#f2ede4" stroke="#bbb" stroke-width="1"/>
+      <path d="M91,279 Q107,275 125,279 L123,285 Q107,283 93,285 Z" fill="#f2ede4" stroke="#bbb" stroke-width="1"/>
+
+      <!-- ── HAKAMA (dark pleated wide-leg trousers) ── -->
+      <path d="M26,204 Q22,244 24,278 L68,278 L72,210 L82,210 L87,278 L130,278 Q132,244 128,204 Z"
+            fill="#111" stroke="#000" stroke-width="2"/>
+      <!-- pleat lines -->
+      <line x1="34"  y1="208" x2="32"  y2="272" stroke="#2a2a2a" stroke-width="1.2"/>
+      <line x1="45"  y1="206" x2="44"  y2="274" stroke="#2a2a2a" stroke-width="1.2"/>
+      <line x1="56"  y1="205" x2="56"  y2="275" stroke="#2a2a2a" stroke-width="1.2"/>
+      <line x1="97"  y1="205" x2="97"  y2="275" stroke="#2a2a2a" stroke-width="1.2"/>
+      <line x1="108" y1="206" x2="109" y2="274" stroke="#2a2a2a" stroke-width="1.2"/>
+      <line x1="119" y1="208" x2="121" y2="272" stroke="#2a2a2a" stroke-width="1.2"/>
+      <!-- hakama top edge -->
+      <path d="M26,204 Q77,212 128,204" fill="none" stroke="#333" stroke-width="1"/>
+
+      <!-- ── HAORI (open samurai overcoat) ── -->
+      <!-- main body — off-white -->
+      <path d="M28,118 Q24,158 24,206 L130,206 Q130,158 126,118 Z"
+            fill="#f2ede4" stroke="#111" stroke-width="2"/>
+      <!-- center seam -->
+      <line x1="77" y1="125" x2="77" y2="206" stroke="#ccc" stroke-width="1.2"/>
+      <!-- inner lapels (V shape, darker) -->
+      <path d="M28,118 Q50,142 77,138 Q104,142 126,118 Q116,128 77,130 Q38,128 28,118 Z"
+            fill="#d8d2c6" stroke="#999" stroke-width="1"/>
+      <!-- haori fold lines left side -->
+      <path d="M36,124 Q32,162 32,198" stroke="#c8c2b6" stroke-width="1" fill="none"/>
+      <path d="M44,122 Q40,162 40,200" stroke="#c8c2b6" stroke-width=".8" fill="none"/>
+      <!-- haori fold lines right side -->
+      <path d="M118,124 Q122,162 122,198" stroke="#c8c2b6" stroke-width="1" fill="none"/>
+      <path d="M110,122 Q114,162 114,200" stroke="#c8c2b6" stroke-width=".8" fill="none"/>
+      <!-- shadow on left edge of haori (cross-hatch) -->
+      <path d="M24,128 L36,128 L32,200 L22,202 Z" fill="url(#lhatch)" opacity=".35"/>
+      <!-- shadow on right edge -->
+      <path d="M118,128 L130,128 L132,202 L122,200 Z" fill="url(#lhatch)" opacity=".35"/>
+
+      <!-- OBI (belt) -->
+      <rect x="40" y="188" width="74" height="18" rx="2" fill="#0a0a0a" stroke="#000" stroke-width="1.5"/>
+      <!-- obi knot -->
+      <path d="M60,188 Q77,182 94,188 L92,206 Q77,210 62,206 Z" fill="#1a1a1a" stroke="#111" stroke-width="1"/>
+
+      <!-- ── SLEEVES ── -->
+      <!-- LEFT sleeve — hanging wide, hand near sword hilt -->
+      <path d="M28,120 Q6,136 4,168 Q2,196 16,202 Q30,208 36,190 Q40,172 36,140 Z"
+            fill="#f2ede4" stroke="#111" stroke-width="2"/>
+      <!-- sleeve shadow inside -->
+      <path d="M28,126 Q8,142 6,170 Q5,188 12,198" fill="url(#ldots)" opacity=".2" stroke="none"/>
+      <!-- fold lines inside sleeve -->
+      <path d="M26,130 Q8,150 8,174" stroke="#c8c2b6" stroke-width=".8" fill="none"/>
+      <!-- HAND -->
+      <path d="M8,200 Q4,208 6,214 Q10,218 18,216 Q26,212 24,204 Q20,198 14,199 Z"
+            fill="#e0d8cc" stroke="#555" stroke-width="1.2"/>
+      <!-- fingers suggestion -->
+      <line x1="6"  y1="212" x2="4"  y2="218" stroke="#888" stroke-width="1" stroke-linecap="round"/>
+      <line x1="10" y1="214" x2="8"  y2="220" stroke="#888" stroke-width="1" stroke-linecap="round"/>
+      <line x1="14" y1="215" x2="13" y2="221" stroke="#888" stroke-width="1" stroke-linecap="round"/>
+
+      <!-- RIGHT sleeve — arm slightly back -->
+      <path d="M126,120 Q148,136 150,168 Q152,196 138,202 Q124,208 118,190 Q114,172 118,140 Z"
+            fill="#f2ede4" stroke="#111" stroke-width="2"/>
+      <path d="M128,126 Q148,142 148,170 Q148,188 142,198" fill="url(#ldots)" opacity=".18" stroke="none"/>
+      <path d="M128,130 Q148,150 146,174" stroke="#c8c2b6" stroke-width=".8" fill="none"/>
+
+      <!-- ── KATANA at LEFT hip ── -->
+      <!-- saya (scabbard) long diagonal -->
+      <path d="M3,158 Q6,170 28,206 Q32,210 38,208 Q42,206 40,202 Q20,166 14,150 Z"
+            fill="#111" stroke="#000" stroke-width="1.5"/>
+      <!-- lacquer bands on saya -->
+      <line x1="8"  y1="164" x2="20" y2="171" stroke="#2a2a2a" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="16" y1="178" x2="28" y2="185" stroke="#2a2a2a" stroke-width="2.5" stroke-linecap="round"/>
+      <!-- kashira (pommel end cap) -->
+      <ellipse cx="5" cy="156" rx="6" ry="3" fill="#555" stroke="#000" stroke-width="1"
+               transform="rotate(-72 5 156)"/>
+      <!-- tsuba (hand guard) -->
+      <ellipse cx="34" cy="200" rx="10" ry="4" fill="#444" stroke="#000" stroke-width="1.5"
+               transform="rotate(-72 34 200)"/>
+      <!-- tsuka (hilt) — cloth-wrapped -->
+      <path d="M34,196 Q40,182 38,166" stroke="#111" stroke-width="8" fill="none" stroke-linecap="round"/>
+      <path d="M34,196 Q40,182 38,166" stroke="#333" stroke-width="4" fill="none" stroke-linecap="round" stroke-dasharray="4,5"/>
+      <!-- menuki ornament -->
+      <ellipse cx="38" cy="178" rx="3" ry="2" fill="#666"/>
+
+      <!-- ── NECK ── -->
+      <path d="M68,104 L68,122 Q68,126 72,126 L82,126 Q86,126 86,122 L86,104 Z"
+            fill="#e0d8cc" stroke="#555" stroke-width="1.2"/>
+
+      <!-- ── HEAD (base skin shape — chin/jaw included) ── -->
+      <path d="M44,76 Q40,96 44,110 Q52,130 66,136 Q74,140 84,136 Q98,130 106,110 Q110,96 110,76 Q104,56 77,54 Q50,56 44,76 Z"
+            fill="#e0d8cc" stroke="#111" stroke-width="2"/>
+
+      <!-- cheek/jaw screen-tone shadow (left side of face, 3/4 view) -->
+      <path d="M44,78 Q40,98 46,114 Q52,130 66,136 L64,108 Q54,98 50,80 Z"
+            fill="url(#ldots)" opacity=".32" stroke="none"/>
+      <!-- underjaw shadow -->
+      <path d="M50,128 Q64,142 84,136 Q74,144 64,140 Q54,138 48,130 Z"
+            fill="url(#lhatch)" opacity=".25" stroke="none"/>
+
+      <!-- EAR (right, partially showing) -->
+      <path d="M108,88 Q114,96 113,108 Q110,116 106,112 Q104,104 106,88 Z"
+            fill="#e0d8cc" stroke="#555" stroke-width="1.2"/>
+      <!-- ear detail -->
+      <path d="M108,94 Q112,100 111,108" stroke="#aaa" stroke-width="1" fill="none"/>
+
+      <!-- ── HAIR MASS (back / sides) — solid black ── -->
+      <!-- hair behind ears and draping down back -->
+      <path d="M44,80 Q36,56 44,36 Q50,18 60,16 Q56,28 56,44 Q56,58 52,74" fill="#111"/>
+      <path d="M110,80 Q118,56 110,36 Q104,18 94,16 Q98,28 98,44 Q98,58 102,74" fill="#111"/>
+      <!-- back of head hair -->
+      <path d="M46,74 Q38,62 40,44 Q44,24 58,14 Q70,6 84,14 Q96,24 100,44 Q102,62 108,74
+               Q102,60 77,58 Q52,60 46,74 Z" fill="#111" stroke="none"/>
+
+      <!-- ── HAIR FRONT (large black shape — classic manga bang) ── -->
+      <path d="M44,78 Q42,50 52,30 Q60,14 72,10 Q76,4 82,10 Q94,14 102,30 Q112,50 110,78
+               Q106,60 77,58 Q48,60 44,78 Z"
+            fill="#111" stroke="#000" stroke-width="1.5"/>
+      <!-- hair strand lines -->
+      <path d="M56,30 Q54,46 52,64" stroke="#222" stroke-width="1.2" fill="none"/>
+      <path d="M70,12 Q68,30 68,58" stroke="#222" stroke-width="1"   fill="none"/>
+      <path d="M84,12 Q86,30 86,58" stroke="#222" stroke-width="1"   fill="none"/>
+      <path d="M98,30 Q100,46 102,64" stroke="#222" stroke-width="1.2" fill="none"/>
+      <!-- hair highlight sheen -->
+      <path d="M60,24 Q74,16 92,24" stroke="#fff" stroke-width="1.5" fill="none" stroke-linecap="round" opacity=".12"/>
+
+      <!-- TOPKNOT (chonmage) -->
+      <rect x="70" y="6" width="14" height="20" rx="4" fill="#111" stroke="#000" stroke-width="1"/>
+      <ellipse cx="77" cy="6" rx="12" ry="7" fill="#111" stroke="#000" stroke-width="1.5"/>
+      <!-- topknot cord/tie -->
+      <rect x="71" y="14" width="12" height="4" rx="1" fill="#2a2a2a"/>
+      <line x1="71" y1="16" x2="83" y2="16" stroke="#444" stroke-width="1"/>
+
+      <!-- ── EYES (narrow/determined — 3/4 view, left eye slightly smaller) ── -->
+      <!-- Far (left) eye -->
+      <path d="M52,84 Q59,79 66,82 Q59,89 52,87 Z" fill="#111"/>
+      <path d="M50,81 Q59,75 68,80" stroke="#111" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <path d="M52,87 Q59,91 66,88" stroke="#555" stroke-width=".8" fill="none"/>
+      <circle cx="58" cy="84" r="1.4" fill="white"/>
+
+      <!-- Near (right) eye — larger -->
+      <path d="M84,82 Q93,77 101,80 Q93,88 84,86 Z" fill="#111"/>
+      <path d="M82,79 Q93,73 103,79" stroke="#111" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+      <!-- lower lashline -->
+      <path d="M84,86 Q93,91 101,88" stroke="#555" stroke-width=".8" fill="none"/>
+      <!-- eye highlight -->
+      <circle cx="89" cy="81" r="2"   fill="white"/>
+      <circle cx="96" cy="85" r="1.2" fill="white" opacity=".6"/>
+
+      <!-- BROWS (lowered, slight furrow — serious) -->
+      <path d="M49,75 Q58,70 68,74" stroke="#111" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <path d="M82,73 Q93,68 104,72" stroke="#111" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <!-- brow shadow under brow -->
+      <path d="M50,76 Q59,72 68,75" stroke="#444" stroke-width="1"   fill="none" stroke-linecap="round"/>
+      <path d="M82,74 Q93,70 104,73" stroke="#444" stroke-width="1"   fill="none" stroke-linecap="round"/>
+
+      <!-- NOSE (subtle — classic manga style) -->
+      <path d="M76,100 Q79,107 82,100" stroke="#888" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+      <path d="M72,104 Q76,109 79,108 Q82,109 86,104" stroke="#aaa" stroke-width="1" fill="none"/>
+
+      <!-- MOUTH (stoic, lips set — thin) -->
+      <path d="M66,120 Q77,127 88,120" stroke="#777" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+      <!-- lower lip shadow -->
+      <path d="M68,122 Q77,128 86,122 Q77,130 68,122 Z" fill="url(#ldots)" opacity=".2" stroke="none"/>
+
+      <!-- BATTLE SCAR — one faint line across cheek -->
+      <path d="M90,76 Q91,88 90,100" stroke="#c09090" stroke-width="1.2" fill="none" stroke-linecap="round" opacity=".55"/>
+    </svg>
+
+    <div class="panel-caption">THE WANDERER</div>
+    <div class="panel-caption-jp">流浪の剣士</div>
+  </div>
+
+  <!-- ══ CANVAS CENTER ══ -->
+  <div id="canvas-center">
+    <div class="scroll-outer">
+      <div class="scroll-rod"></div>
+      <div class="canvas-mount">
+        <canvas id="canvas" width="660" height="416"></canvas>
+      </div>
+      <div class="scroll-rod"></div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Action Ronin (The Warrior — mid-slash) -->
+  <div class="char-panel right">
+    <div class="panel-kanji">道</div>
+
+    <!-- VAGABOND-STYLE ACTION RONIN SVG -->
+    <svg viewBox="0 0 155 308" width="155" height="285" xmlns="http://www.w3.org/2000/svg" style="display:block">
+      <defs>
+        <pattern id="rhatch" patternUnits="userSpaceOnUse" width="5" height="5" patternTransform="rotate(45)">
+          <line x1="0" y1="0" x2="0" y2="5" stroke="#000" stroke-width=".65"/>
+        </pattern>
+        <pattern id="rdots" patternUnits="userSpaceOnUse" width="4" height="4">
+          <circle cx="2" cy="2" r=".85" fill="#000"/>
+        </pattern>
+        <pattern id="rfine" patternUnits="userSpaceOnUse" width="3" height="3" patternTransform="rotate(135)">
+          <line x1="0" y1="0" x2="0" y2="3" stroke="#000" stroke-width=".5"/>
+        </pattern>
+      </defs>
+
+      <!-- panel border lines -->
+      <line x1="0"   y1="0" x2="0"   y2="308" stroke="#111" stroke-width="1"/>
+      <line x1="154" y1="0" x2="154" y2="308" stroke="#111" stroke-width="1"/>
+
+      <!-- RADIAL SPEED LINES from sword tip region -->
+      <line x1="30"  y1="80"  x2="0"   y2="0"   stroke="#1a1a1a" stroke-width="1.5"/>
+      <line x1="30"  y1="80"  x2="78"  y2="0"   stroke="#1a1a1a" stroke-width="1.2"/>
+      <line x1="30"  y1="80"  x2="155" y2="0"   stroke="#1a1a1a" stroke-width="1.5"/>
+      <line x1="30"  y1="80"  x2="155" y2="60"  stroke="#1a1a1a" stroke-width="1"/>
+      <line x1="30"  y1="80"  x2="155" y2="130" stroke="#1a1a1a" stroke-width="1"/>
+      <line x1="30"  y1="80"  x2="0"   y2="100" stroke="#1a1a1a" stroke-width="1"/>
+      <line x1="30"  y1="80"  x2="0"   y2="180" stroke="#1a1a1a" stroke-width="1"/>
+      <line x1="30"  y1="80"  x2="50"  y2="308" stroke="#1a1a1a" stroke-width=".8"/>
+      <!-- concentric impact arcs -->
+      <path d="M30,30 Q80,60 30,130"  fill="none" stroke="#1e1e1e" stroke-width=".8"/>
+      <path d="M30,10 Q100,65 30,150" fill="none" stroke="#1e1e1e" stroke-width=".5"/>
+
+      <!-- ── SWORD — large, diagonal, motion trail ── -->
+      <!-- motion blur trails (lighter, wider, behind blade) -->
+      <path d="M155,2 Q110,35 30,90" stroke="#0f0f0f" stroke-width="8"  fill="none" stroke-linecap="round" opacity=".8"/>
+      <path d="M155,6 Q112,38 32,92" stroke="#0f0f0f" stroke-width="5"  fill="none" stroke-linecap="round" opacity=".5"/>
+      <path d="M155,10 Q114,40 34,94" stroke="#0f0f0f" stroke-width="3" fill="none" stroke-linecap="round" opacity=".3"/>
+      <!-- blade proper -->
+      <path d="M154,0 Q108,32 28,88 L34,96 Q116,40 155,10 Z"
+            fill="#d8dde8" stroke="#333" stroke-width="1"/>
+      <!-- blade edge (sharp side) -->
+      <path d="M154,0 Q108,32 28,88" stroke="#ffffff" stroke-width=".8" fill="none" opacity=".6"/>
+      <!-- fuller groove -->
+      <path d="M150,4 Q106,35 30,90" stroke="#aab0c0" stroke-width="1" fill="none" opacity=".4"/>
+      <!-- blood drop on tip (single minimal detail) -->
+      <ellipse cx="26" cy="92" rx="2.5" ry="3.5" fill="#7a0000" transform="rotate(-35 26 92)"/>
+      <!-- tsuba -->
+      <ellipse cx="36" cy="94" rx="12" ry="5" fill="#333" stroke="#111" stroke-width="1.5"
+               transform="rotate(-35 36 94)"/>
+      <!-- tsuba ornament lines -->
+      <line x1="28" y1="96" x2="44" y2="92" stroke="#555" stroke-width=".8" opacity=".6"/>
+      <!-- tsuka (hilt — wrapping visible) -->
+      <path d="M36,92 Q52,104 56,118" stroke="#111" stroke-width="10" fill="none" stroke-linecap="round"/>
+      <path d="M36,92 Q52,104 56,118" stroke="#fff"  stroke-width="2"  fill="none" stroke-linecap="round" stroke-dasharray="3,5" opacity=".15"/>
+      <!-- kashira (pommel) -->
+      <ellipse cx="59" cy="122" rx="8" ry="4" fill="#333" stroke="#111" stroke-width="1.2"
+               transform="rotate(-35 59 122)"/>
+
+      <!-- ── BLOWING FABRIC — haori ends billowing ── -->
+      <!-- left robe tail, swept back by motion -->
+      <path d="M74,218 Q48,238 32,270 Q38,280 52,276 Q64,268 78,248 Q84,234 82,220 Z"
+            fill="#f2ede4" stroke="#111" stroke-width="1.5"/>
+      <path d="M76,222 Q52,244 36,272" stroke="#c8c2b6" stroke-width="1" fill="none"/>
+      <path d="M80,224 Q56,248 42,270" stroke="#c8c2b6" stroke-width=".7" fill="none"/>
+      <!-- right robe tail swept -->
+      <path d="M104,218 Q126,230 138,258 Q134,268 122,264 Q110,256 100,238 Q96,226 100,216 Z"
+            fill="#f2ede4" stroke="#111" stroke-width="1.5"/>
+
+      <!-- ── GROUND / FEET ── -->
+      <ellipse cx="90" cy="302" rx="36" ry="5" fill="#111" opacity=".5"/>
+      <!-- LEFT foot — forward/planted -->
+      <path d="M50,280 Q62,272 78,274 Q82,282 78,288 Q64,290 50,286 Z"
+            fill="#111" stroke="#000" stroke-width="1.5"/>
+      <!-- geta teeth -->
+      <rect x="54" y="286" width="5" height="6" fill="#2a2a2a"/>
+      <rect x="70" y="286" width="5" height="6" fill="#2a2a2a"/>
+      <!-- RIGHT foot — back, toe pointed -->
+      <path d="M96,282 Q108,276 122,278 Q126,285 122,291 Q108,293 96,289 Z"
+            fill="#111" stroke="#000" stroke-width="1.5"/>
+      <rect x="100" y="289" width="5" height="6" fill="#2a2a2a"/>
+      <rect x="116" y="289" width="5" height="6" fill="#2a2a2a"/>
+      <!-- tabi socks -->
+      <path d="M52,276 Q65,270 77,274 L76,280 Q64,278 54,280 Z" fill="#f2ede4" stroke="#bbb" stroke-width="1"/>
+      <path d="M98,278 Q110,272 120,276 L118,282 Q108,280 100,282 Z" fill="#f2ede4" stroke="#bbb" stroke-width="1"/>
+
+      <!-- ── HAKAMA (wide stance, mid-motion) ── -->
+      <path d="M40,200 Q36,238 38,272 L82,272 L80,208 L88,208 L92,272 L130,272 Q132,238 128,200 Z"
+            fill="#111" stroke="#000" stroke-width="2"/>
+      <!-- pleat lines -->
+      <line x1="48"  y1="204" x2="46"  y2="266" stroke="#2a2a2a" stroke-width="1.2"/>
+      <line x1="58"  y1="202" x2="58"  y2="268" stroke="#2a2a2a" stroke-width="1.2"/>
+      <line x1="68"  y1="202" x2="68"  y2="270" stroke="#2a2a2a" stroke-width="1.2"/>
+      <line x1="100" y1="202" x2="100" y2="270" stroke="#2a2a2a" stroke-width="1.2"/>
+      <line x1="110" y1="202" x2="112" y2="268" stroke="#2a2a2a" stroke-width="1.2"/>
+      <line x1="120" y1="204" x2="122" y2="266" stroke="#2a2a2a" stroke-width="1.2"/>
+
+      <!-- ── BODY (leaning forward into the slash) ── -->
+      <!-- haori — body, slightly tilted -->
+      <path d="M36,126 Q32,162 36,202 L128,202 Q130,162 126,126 Z"
+            fill="#f2ede4" stroke="#111" stroke-width="2"/>
+      <!-- lapels -->
+      <path d="M36,126 Q56,148 84,144 Q112,148 126,126 Q116,136 84,138 Q52,136 36,126 Z"
+            fill="#d8d2c6" stroke="#999" stroke-width="1"/>
+      <line x1="84" y1="136" x2="84" y2="202" stroke="#ccc" stroke-width="1.2"/>
+      <!-- fold lines -->
+      <path d="M44,134 Q40,168 40,196" stroke="#c8c2b6" stroke-width=".8" fill="none"/>
+      <path d="M122,134 Q126,168 124,196" stroke="#c8c2b6" stroke-width=".8" fill="none"/>
+      <!-- heavy shadows: left edge hatch -->
+      <path d="M36,134 L46,134 L42,198 L34,200 Z" fill="url(#rhatch)" opacity=".4"/>
+
+      <!-- OBI -->
+      <rect x="46" y="184" width="76" height="18" rx="2" fill="#0a0a0a" stroke="#000" stroke-width="1.5"/>
+
+      <!-- ── ARMS ── -->
+      <!-- RIGHT arm — extended forward AND UP holding sword with both hands -->
+      <!-- upper arm going forward-up -->
+      <path d="M36,136 Q16,128 14,118 Q10,106 16,100"
+            stroke="#e0d8cc" stroke-width="16" fill="none" stroke-linecap="round"/>
+      <!-- forearm -->
+      <path d="M16,102 Q24,88 38,88 Q46,88 54,96"
+            stroke="#e0d8cc" stroke-width="14" fill="none" stroke-linecap="round"/>
+      <!-- sleeve over arm -->
+      <path d="M36,128 Q12,122 8,108 Q6,96 14,88 Q22,78 38,82 Q48,82 56,90"
+            fill="#f2ede4" stroke="#111" stroke-width="1.8"/>
+      <!-- hand gripping pommel area -->
+      <path d="M50,98 Q56,110 60,120 Q62,128 58,130 Q54,132 50,126 Q44,114 46,100 Z"
+            fill="#e0d8cc" stroke="#555" stroke-width="1.2"/>
+
+      <!-- LEFT arm — pulled slightly back (two-hand grip style) -->
+      <path d="M128,136 Q148,128 152,120 Q156,108 150,100"
+            stroke="#e0d8cc" stroke-width="15" fill="none" stroke-linecap="round"/>
+      <path d="M150,102 Q142,90 130,88 Q124,86 118,92"
+            stroke="#e0d8cc" stroke-width="13" fill="none" stroke-linecap="round"/>
+      <!-- sleeve over arm -->
+      <path d="M126,128 Q150,120 154,108 Q158,96 148,86 Q138,76 122,82 Q112,84 108,96"
+            fill="#f2ede4" stroke="#111" stroke-width="1.8"/>
+      <!-- hand on lower grip -->
+      <path d="M112,94 Q104,104 100,114 Q98,124 104,126 Q110,128 116,118 Q122,108 118,96 Z"
+            fill="#e0d8cc" stroke="#555" stroke-width="1.2"/>
+
+      <!-- ── NECK ── -->
+      <path d="M76,118 L76,132 Q76,136 80,136 L92,136 Q96,136 96,132 L96,118 Z"
+            fill="#e0d8cc" stroke="#555" stroke-width="1.2"/>
+
+      <!-- ── HEAD (slightly tilted, battle-focus) ── -->
+      <!-- Head base — rotated a touch -->
+      <g transform="rotate(-5 84 80)">
+        <path d="M56,70 Q52,90 56,108 Q64,130 80,136 Q96,130 106,108 Q110,90 110,70
+                 Q104,50 84,48 Q64,50 56,70 Z"
+              fill="#e0d8cc" stroke="#111" stroke-width="2"/>
+        <!-- heavy shadow on right side of face — three-quarter lit -->
+        <path d="M108,72 Q112,90 106,108 Q98,128 84,134 L86,104 Q98,94 104,76 Z"
+              fill="url(#rdots)" opacity=".38" stroke="none"/>
+        <!-- jaw/chin shadow mass -->
+        <path d="M62,122 Q72,140 84,136 Q96,130 102,120 Q84,134 62,122 Z"
+              fill="url(#rhatch)" opacity=".22" stroke="none"/>
+      </g>
+
+      <!-- ── HAIR — SHORT, WILD, swept by wind ── -->
+      <!-- back/side hair mass -->
+      <path d="M56,72 Q46,52 50,32 Q56,14 66,12 Q62,24 60,38 Q58,54 56,72" fill="#111"/>
+      <path d="M110,72 Q120,52 116,32 Q110,14 100,12 Q104,24 106,40 Q108,56 110,72" fill="#111"/>
+      <!-- wind-blown spikes — hair swept to the right (behind) -->
+      <path d="M110,72 Q124,54 136,46 Q128,50 122,60 Q130,44 140,36 Q128,44 120,58 Q126,40 138,30"
+            stroke="#111" stroke-width="4" fill="none" stroke-linecap="round"/>
+      <path d="M108,68 Q118,50 130,42 Q122,50 116,62" stroke="#111" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <!-- main hair front -->
+      <path d="M56,74 Q54,48 62,28 Q70,12 80,10 Q90,8 100,14 Q110,28 112,56 Q108,38 84,36 Q60,38 56,74 Z"
+            fill="#111" stroke="#000" stroke-width="1.5"/>
+      <!-- wild strands forward (dynamic) -->
+      <path d="M60,36 Q54,52 56,70" stroke="#222" stroke-width="1.2" fill="none"/>
+      <path d="M72,14 Q70,32 68,56" stroke="#222" stroke-width="1" fill="none"/>
+      <path d="M92,12 Q94,30 94,58" stroke="#222" stroke-width="1" fill="none"/>
+      <!-- shorter — no topknot, hair is loose and wild -->
+      <!-- wild top spikes -->
+      <path d="M72,14 Q70,4  76,0  Q80,4  76,14" fill="#111"/>
+      <path d="M84,12 Q84,2  90,0  Q94,4  88,14" fill="#111"/>
+      <!-- hair highlight -->
+      <path d="M64,26 Q78,18 96,22" stroke="#fff" stroke-width="1.5" fill="none" stroke-linecap="round" opacity=".1"/>
+
+      <!-- ── EYES (wide open — battle mode) ── -->
+      <!-- LEFT eye (far, slightly smaller — 3/4 view) -->
+      <ellipse cx="68" cy="76" rx="10" ry="10" fill="white" stroke="#111" stroke-width="1.8"/>
+      <ellipse cx="68" cy="77" rx="7.5" ry="7.5" fill="#111"/>
+      <!-- iris ring -->
+      <circle  cx="68" cy="77" r="5" fill="#1a1a1a"/>
+      <!-- pupil -->
+      <circle  cx="68" cy="77" r="3" fill="#000"/>
+      <!-- highlight (cross-catchlight — classic manga) -->
+      <circle  cx="64" cy="73" r="2.2" fill="white"/>
+      <circle  cx="71" cy="81" r="1.2" fill="white" opacity=".7"/>
+      <!-- heavy lashes upper -->
+      <path d="M58,70 Q68,65 78,70" stroke="#111" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <line x1="58" y1="70" x2="54" y2="65" stroke="#111" stroke-width="2" stroke-linecap="round"/>
+      <line x1="62" y1="67" x2="60" y2="62" stroke="#111" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="68" y1="65" x2="67" y2="60" stroke="#111" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="74" y1="67" x2="75" y2="62" stroke="#111" stroke-width="1.5" stroke-linecap="round"/>
+
+      <!-- RIGHT eye (near, larger, most prominent) -->
+      <ellipse cx="96" cy="74" rx="12" ry="12" fill="white" stroke="#111" stroke-width="2"/>
+      <ellipse cx="96" cy="75" rx="9"  ry="9"  fill="#111"/>
+      <circle  cx="96" cy="75" r="6"   fill="#1a1a1a"/>
+      <circle  cx="96" cy="75" r="3.5" fill="#000"/>
+      <!-- catchlight crosses (classic shonen style) -->
+      <circle  cx="91" cy="70" r="2.8" fill="white"/>
+      <circle  cx="100" cy="79" r="1.5" fill="white" opacity=".7"/>
+      <!-- heavy lashes -->
+      <path d="M84,68 Q96,62 108,68" stroke="#111" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <line x1="84"  y1="68" x2="80" y2="62" stroke="#111" stroke-width="2" stroke-linecap="round"/>
+      <line x1="88"  y1="64" x2="86" y2="58" stroke="#111" stroke-width="2" stroke-linecap="round"/>
+      <line x1="96"  y1="62" x2="96" y2="56" stroke="#111" stroke-width="2" stroke-linecap="round"/>
+      <line x1="104" y1="64" x2="106" y2="58" stroke="#111" stroke-width="2" stroke-linecap="round"/>
+      <line x1="108" y1="68" x2="112" y2="63" stroke="#111" stroke-width="2" stroke-linecap="round"/>
+      <!-- lower lash -->
+      <path d="M84,80 Q96,86 108,82" stroke="#444" stroke-width="1" fill="none"/>
+
+      <!-- BROWS — fierce, heavily furrowed -->
+      <path d="M56,64 Q66,57 78,62" stroke="#111" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+      <path d="M84,60 Q96,53 110,58" stroke="#111" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+      <!-- brow shadow depth -->
+      <path d="M56,65 Q66,59 78,64" stroke="#333" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+      <path d="M84,62 Q96,55 110,60" stroke="#333" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+
+      <!-- NOSE — warrior's nose, slight damage (bent) -->
+      <path d="M82,96 Q84,104 88,98" stroke="#888" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+      <path d="M78,102 Q82,108 84,106 Q88,108 92,102" stroke="#aaa" stroke-width="1.2" fill="none"/>
+
+      <!-- MOUTH — open, battle cry / gritted teeth -->
+      <path d="M70,116 Q80,124 94,118" stroke="#555" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <!-- teeth showing -->
+      <path d="M70,116 Q78,120 84,118 Q90,116 94,118 Q80,130 70,116 Z" fill="#1a1a1a"/>
+      <line x1="74" y1="118" x2="76" y2="126" stroke="#444" stroke-width="1"/>
+      <line x1="80" y1="119" x2="80" y2="128" stroke="#444" stroke-width="1"/>
+      <line x1="86" y1="118" x2="86" y2="126" stroke="#444" stroke-width="1"/>
+      <line x1="91" y1="118" x2="91" y2="125" stroke="#444" stroke-width="1"/>
+
+      <!-- BATTLE PAINT / SMUDGE of dust on cheek -->
+      <path d="M104,88 Q108,96 106,104" stroke="#aaa" stroke-width="2" fill="none" stroke-linecap="round" opacity=".3"/>
+
+      <!-- IMPACT MARK at sword region -->
+      <path d="M16,60 L24,48 L22,60 L32,50 L28,62 L40,54"
+            stroke="#fff" stroke-width="1" fill="none" stroke-linecap="round" opacity=".15"/>
+    </svg>
+
+    <div class="panel-caption">THE WARRIOR</div>
+    <div class="panel-caption-jp">孤高の剣士</div>
+  </div>
+
+</div>
+
+<!-- ══ FOOTER ══ -->
+<footer>
+  <span> TIMEPASS DRAWING</span>
+  <span class="red">⸻ 墨 ⸻</span>
+  <span>DRAW ANYTHING · BE FREE · CONQUER THE TIME</span>
+</footer>
+
+<!-- ink drops -->
+<script>
+for(let i=0;i<12;i++){
+  const d=document.createElement('div');
+  d.className='ink-drop';
+  d.style.cssText=`left:${Math.random()*100}vw;top:0;
+    animation-duration:${10+Math.random()*14}s;
+    animation-delay:${Math.random()*18}s;
+    width:${2+Math.random()*2}px;height:${3+Math.random()*3}px;
+    opacity:0;`;
+  document.body.appendChild(d);
+}
+</script>
+
+<!-- drawing engine -->
+<script>
+const canvas=document.getElementById('canvas');
+const ctx=canvas.getContext('2d');
+
+/* ── draw rice-paper texture on canvas ── */
+(function paperTexture(){
+  const id=ctx.createImageData(canvas.width,canvas.height);
+  for(let i=0;i<id.data.length;i+=4){
+    const g=242+Math.random()*8;
+    id.data[i]=g;id.data[i+1]=g-4;id.data[i+2]=g-8;id.data[i+3]=255;
+  }
+  ctx.putImageData(id,0,0);
+  /* subtle horizontal fibers */
+  ctx.save();
+  for(let y=0;y<canvas.height;y+=Math.random()*6+1){
+    ctx.beginPath();
+    ctx.moveTo(0,y);ctx.lineTo(canvas.width,y);
+    ctx.strokeStyle=`rgba(0,0,0,${Math.random()*.018})`;
+    ctx.lineWidth=.5;ctx.stroke();
+  }
+  ctx.restore();
+})();
+
+let tool='pen',color='#1a1a1a',size=5,opacity=1;
+let drawing=false,lastX=0,lastY=0;
+let undoStack=[],redoStack=[];
+
+function saveState(){
+  undoStack.push(ctx.getImageData(0,0,canvas.width,canvas.height));
+  if(undoStack.length>40)undoStack.shift();
+  redoStack=[];
+}
+function undo(){
+  if(!undoStack.length)return;
+  redoStack.push(ctx.getImageData(0,0,canvas.width,canvas.height));
+  ctx.putImageData(undoStack.pop(),0,0);
+}
+function redo(){
+  if(!redoStack.length)return;
+  undoStack.push(ctx.getImageData(0,0,canvas.width,canvas.height));
+  ctx.putImageData(redoStack.pop(),0,0);
+}
+
+function setTool(t){
+  tool=t;
+  document.getElementById('tool-status').textContent=t.charAt(0).toUpperCase()+t.slice(1);
+  document.querySelectorAll('button').forEach(b=>b.classList.remove('active-tool'));
+  const el=document.getElementById('btn-'+t);if(el)el.classList.add('active-tool');
+}
+function setColor(c){color=c}
+function setSize(v){size=+v;document.getElementById('size-val').textContent=v}
+function setOpacity(v){opacity=v/100;document.getElementById('op-val').textContent=v+'%'}
+function clearCanvas(){
+  saveState();
+  /* re-draw the paper texture after clear */
+  const id=ctx.createImageData(canvas.width,canvas.height);
+  for(let i=0;i<id.data.length;i+=4){
+    const g=242+Math.random()*8;
+    id.data[i]=g;id.data[i+1]=g-4;id.data[i+2]=g-8;id.data[i+3]=255;
+  }
+  ctx.putImageData(id,0,0);
+  ctx.save();
+  for(let y=0;y<canvas.height;y+=Math.random()*6+1){
+    ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y);
+    ctx.strokeStyle=`rgba(0,0,0,${Math.random()*.018})`;
+    ctx.lineWidth=.5;ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function applyCtx(){
+  ctx.lineCap  = tool==='marker' ? 'square' : 'round';
+  ctx.lineJoin = 'round';
+  if(tool==='eraser'){
+    ctx.globalCompositeOperation='destination-out';
+    ctx.lineWidth=size*5;
+    ctx.globalAlpha=1;
+    ctx.strokeStyle='rgba(0,0,0,1)';
+    ctx.fillStyle=ctx.strokeStyle;
+  } else if(tool==='marker'){
+    ctx.globalCompositeOperation='source-over';
+    ctx.lineWidth=size*2.5;
+    ctx.globalAlpha=opacity*.45;
+    ctx.strokeStyle=color;
+    ctx.fillStyle=color;
+  } else {
+    ctx.globalCompositeOperation='source-over';
+    ctx.lineWidth=size;
+    ctx.globalAlpha=opacity;
+    ctx.strokeStyle=color;
+    ctx.fillStyle=color;
+  }
+}
+
+function getPos(e){
+  const r=canvas.getBoundingClientRect();
+  const sx=canvas.width/r.width,sy=canvas.height/r.height;
+  if(e.touches)return{x:(e.touches[0].clientX-r.left)*sx,y:(e.touches[0].clientY-r.top)*sy};
+  return{x:(e.clientX-r.left)*sx,y:(e.clientY-r.top)*sy};
+}
+
+function startDraw(x,y){
+  saveState();drawing=true;lastX=x;lastY=y;
+  applyCtx();
+  ctx.beginPath();ctx.arc(x,y,ctx.lineWidth/2,0,Math.PI*2);ctx.fill();
+}
+function draw(x,y){
+  if(!drawing)return;applyCtx();
+  const mx=(lastX+x)/2,my=(lastY+y)/2;
+  ctx.beginPath();ctx.moveTo(lastX,lastY);
+  ctx.quadraticCurveTo(lastX,lastY,mx,my);ctx.stroke();
+  lastX=x;lastY=y;
+}
+function stopDraw(){drawing=false;ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over'}
+
+canvas.addEventListener('mousedown', e=>{const p=getPos(e);startDraw(p.x,p.y)});
+canvas.addEventListener('mousemove', e=>{const p=getPos(e);draw(p.x,p.y)});
+canvas.addEventListener('mouseup',   stopDraw);
+canvas.addEventListener('mouseleave',stopDraw);
+canvas.addEventListener('touchstart',e=>{e.preventDefault();const p=getPos(e);startDraw(p.x,p.y)},{passive:false});
+canvas.addEventListener('touchmove', e=>{e.preventDefault();const p=getPos(e);draw(p.x,p.y)},{passive:false});
+canvas.addEventListener('touchend',  stopDraw);
+
+document.addEventListener('keydown',e=>{
+  if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();undo()}
+  if((e.ctrlKey||e.metaKey)&&(e.key==='y'||(e.shiftKey&&e.key==='Z'))){e.preventDefault();redo()}
+  if(!e.ctrlKey&&!e.metaKey){
+    if(e.key==='p')setTool('pen');
+    if(e.key==='m')setTool('marker');
+    if(e.key==='e')setTool('eraser');
+  }
+});
+
+setTool('pen');
+</script>
+</body>
+</html>
