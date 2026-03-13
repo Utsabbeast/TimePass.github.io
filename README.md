@@ -8,7 +8,7 @@
 
 Hosted on GitHub Pages:
 ```
-https://utsabbeast.github.io/TimePass.github.io/
+[https://utsabbeast.github.io/TimePass.github.io/](https://utsabbeast.github.io/TimePass.github.io/)
 ```
 
 ---
