@@ -1,4 +1,4 @@
-# TimePass Drawing — स्याही और कूची
+# TimePass Drawing 
 
 > *A classical ink-and-brush drawing canvas wrapped in black-and-white anime samurai artwork.*
 
